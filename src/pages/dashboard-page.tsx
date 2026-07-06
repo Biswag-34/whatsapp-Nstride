@@ -1,90 +1,89 @@
 import { motion } from "framer-motion";
-import { ArrowUpRight, CalendarDays } from "lucide-react";
+import {
+  Banknote,
+  BellDot,
+  CheckCircle2,
+  Clock3,
+  PackageCheck,
+  PackageX,
+  UploadCloud,
+  WalletCards,
+} from "lucide-react";
 
-import { MetricCard } from "@/components/dashboard/metric-card";
-import { OrderChart } from "@/components/dashboard/order-chart";
-import { QuickActions } from "@/components/dashboard/quick-actions";
-import { RecentActivity } from "@/components/dashboard/recent-activity";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { metrics } from "@/features/dashboard/data/mock-dashboard";
+import { MetricCard } from "@/components/dispatch/metric-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDate } from "@/lib/utils";
+import { useDispatchStore } from "@/stores/use-dispatch-store";
 
 export function DashboardPage() {
+  const metrics = useDispatchStore((state) => state.metrics);
+  const activities = useDispatchStore((state) => state.activities);
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.28 }}
-      className="space-y-6"
-    >
-      <section className="glass-panel rounded-2xl border border-border p-5 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <Badge variant="success" className="mb-4">
-              Healthcare operations
-            </Badge>
-            <h1 className="text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
-              N-Stride Command Center
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Comfort • Protection • Every Step Matters
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline">
-              <CalendarDays />
-              Today
-            </Button>
-            <Button>
-              Operations brief
-              <ArrowUpRight />
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric, index) => (
-          <MetricCard key={metric.label} {...metric} index={index} />
-        ))}
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <OrderChart />
-        <QuickActions />
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.82fr)_minmax(320px,0.48fr)]">
-        <RecentActivity />
-        <div className="glass-panel rounded-xl border border-border p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold tracking-normal text-foreground">
-              Dispatch Health
-            </h2>
-            <Badge variant="slate">North zone</Badge>
-          </div>
-          <div className="mt-6 space-y-5">
-            {[
-              ["Protected stock", "87%"],
-              ["Courier SLA", "94%"],
-              ["Payment captured", "91%"],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-medium text-foreground">{label}</span>
-                  <span className="text-muted-foreground">{value}</span>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <div>
+        <p className="text-sm font-medium text-primary">N-Stride Dispatch Center</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-normal sm:text-3xl">
+          Dispatch operations
+        </h1>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard icon={PackageCheck} label="Total Orders" value={metrics.totalOrders} />
+        <MetricCard icon={BellDot} label="Pending WhatsApp" tone="amber" value={metrics.pendingWhatsApp} />
+        <MetricCard icon={CheckCircle2} label="WhatsApp Sent" tone="emerald" value={metrics.whatsappSent} />
+        <MetricCard icon={PackageX} label="Cancelled" tone="slate" value={metrics.cancelled} />
+        <MetricCard icon={Clock3} label="Delivered" value={metrics.delivered} />
+        <MetricCard icon={Banknote} label="COD" tone="amber" value={metrics.cod} />
+        <MetricCard icon={WalletCards} label="Prepaid" tone="emerald" value={metrics.prepaid} />
+        <MetricCard icon={UploadCloud} label="Today's Import" value={metrics.todayImport} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle>Latest Import Session</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {metrics.latestImportSession ? (
+              <div className="space-y-4">
+                <div>
+                  <p className="font-medium">{metrics.latestImportSession.fileName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(metrics.latestImportSession.importedAt)}
+                  </p>
                 </div>
-                <div className="h-2 rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: value }}
-                  />
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <span className="rounded-lg bg-muted/60 p-3">Inserted: {metrics.latestImportSession.inserted}</span>
+                  <span className="rounded-lg bg-muted/60 p-3">Updated: {metrics.latestImportSession.updated}</span>
+                  <span className="rounded-lg bg-muted/60 p-3">Duplicates: {metrics.latestImportSession.duplicates}</span>
+                  <span className="rounded-lg bg-muted/60 p-3">Errors: {metrics.latestImportSession.errors}</span>
                 </div>
               </div>
+            ) : (
+              <p className="text-sm leading-6 text-muted-foreground">
+                No Shopdeck file has been imported yet.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {activities.slice(0, 6).map((activity) => (
+              <div key={activity.id} className="rounded-lg border border-border bg-background/45 p-3">
+                <p className="text-sm font-medium">{activity.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{activity.description}</p>
+              </div>
             ))}
-          </div>
-        </div>
-      </section>
+            {activities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Activity will appear after imports or WhatsApp dispatches.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
     </motion.div>
   );
 }

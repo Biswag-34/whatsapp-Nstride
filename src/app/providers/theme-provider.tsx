@@ -6,9 +6,8 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   const theme = useThemeStore((state) => state.theme);
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
-    root.style.colorScheme = theme;
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   return children;

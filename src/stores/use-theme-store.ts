@@ -18,7 +18,7 @@ export const useThemeStore = create<ThemeState>()(
         set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
     }),
     {
-      name: "n-stride-theme",
+      name: "nstride-dispatch-theme",
     },
   ),
 );
