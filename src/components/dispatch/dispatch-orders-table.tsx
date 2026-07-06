@@ -20,6 +20,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface DispatchOrdersTableProps {
   emptyText: string;
+  onOpenOrder?: (order: DispatchOrder) => void;
   onSendWhatsApp?: (order: DispatchOrder) => void;
   orders: DispatchOrder[];
 }
@@ -35,11 +36,12 @@ function SortButton({ label }: { label: string }) {
 
 export function DispatchOrdersTable({
   emptyText,
+  onOpenOrder,
   onSendWhatsApp,
   orders,
 }: DispatchOrdersTableProps) {
   const [globalFilter, setGlobalFilter] = useState("");
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ desc: true, id: "orderDate" }]);
   const columns = useMemo<ColumnDef<DispatchOrder>[]>(
     () => [
       {
@@ -86,23 +88,31 @@ export function DispatchOrdersTable({
         cell: ({ row }) => formatDate(row.original.orderDate),
         header: ({ column }) => (
           <button type="button" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-            <SortButton label="Date" />
+            <SortButton label="Shopdeck Date" />
           </button>
         ),
       },
       {
         id: "actions",
-        cell: ({ row }) =>
-          onSendWhatsApp ? (
-            <Button size="sm" onClick={() => onSendWhatsApp(row.original)}>
-              <MessageCircle />
-              Send
-            </Button>
-          ) : null,
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            {onOpenOrder ? (
+              <Button size="sm" variant="outline" onClick={() => onOpenOrder(row.original)}>
+                Open
+              </Button>
+            ) : null}
+            {onSendWhatsApp ? (
+              <Button size="sm" onClick={() => onSendWhatsApp(row.original)}>
+                <MessageCircle />
+                Send
+              </Button>
+            ) : null}
+          </div>
+        ),
         header: "",
       },
     ],
-    [onSendWhatsApp],
+    [onOpenOrder, onSendWhatsApp],
   );
   const table = useReactTable({
     columns,

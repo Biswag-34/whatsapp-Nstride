@@ -3,6 +3,7 @@ import {
   History,
   LayoutDashboard,
   MessageSquareText,
+  PackageSearch,
   Settings,
   UploadCloud,
   type LucideIcon,
@@ -16,6 +17,7 @@ export interface NavigationItem {
 
 export const navigationItems: NavigationItem[] = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/orders", icon: PackageSearch, label: "Orders" },
   { href: "/import-center", icon: UploadCloud, label: "Import Center" },
   { href: "/dispatch-queue", icon: ClipboardList, label: "Dispatch Queue" },
   { href: "/dispatch-history", icon: History, label: "Dispatch History" },

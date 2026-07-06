@@ -32,7 +32,7 @@ function normalizePayment(input: string): PaymentType {
 }
 
 function toAmount(input: string) {
-  const parsed = Number(input.replace(/[₹,\s]/g, ""));
+  const parsed = Number(input.replace(/[^\d.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 

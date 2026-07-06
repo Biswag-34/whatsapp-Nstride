@@ -62,6 +62,32 @@ function sourceFingerprint(sourceRow: Record<string, string>) {
   );
 }
 
+function inferDispatchStatus(row: ShopdeckParsedRow, existing?: DispatchOrder) {
+  const shopdeckStatus = String(row.sourceRow["Order Status"] ?? "").toLowerCase();
+
+  if (shopdeckStatus.includes("delivered") && !shopdeckStatus.includes("rto")) {
+    return "delivered";
+  }
+
+  if (shopdeckStatus.includes("cancel")) {
+    return "cancelled";
+  }
+
+  if (shopdeckStatus.includes("rto")) {
+    return "rto";
+  }
+
+  if (existing?.whatsappSentAt) {
+    return "whatsapp_sent";
+  }
+
+  if (row.fields.trackingId || row.fields.trackingUrl) {
+    return "whatsapp_ready";
+  }
+
+  return "pending_dispatch";
+}
+
 function changeTitle(field: keyof ShopdeckOrderFields, previous: unknown, next: unknown) {
   const label = FIELD_LABELS[field];
 
@@ -129,7 +155,7 @@ function createOrder(
     sourceRow: row.sourceRow,
     sourceRowFingerprint: sourceFingerprint(row.sourceRow),
     sourceHeaders,
-    status: "pending_dispatch",
+    status: inferDispatchStatus(row),
     updatedAt: timestamp,
   };
 }
@@ -202,7 +228,7 @@ export function applyShopdeckRows(
       sourceRow: row.sourceRow,
       sourceRowFingerprint: sourceFingerprint(row.sourceRow),
       sourceHeaders,
-      status: "pending_dispatch",
+      status: inferDispatchStatus(row, existing),
       updatedAt: timestamp,
     };
 

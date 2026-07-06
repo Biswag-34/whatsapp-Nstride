@@ -3,8 +3,9 @@ import { MessageCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { DispatchOrdersTable } from "@/components/dispatch/dispatch-orders-table";
+import { OrderDrawer } from "@/components/dispatch/order-drawer";
+import { WhatsAppDispatchModal } from "@/components/dispatch/whatsapp-dispatch-modal";
 import { Button } from "@/components/ui/button";
-import { getWhatsAppUrl } from "@/features/dispatch/services/template-engine";
 import type { DispatchOrder } from "@/features/dispatch/types";
 import { useDispatchStore } from "@/stores/use-dispatch-store";
 
@@ -19,36 +20,31 @@ export function DispatchQueuePage() {
   const [cityFilter, setCityFilter] = useState("");
   const [stateFilter, setStateFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const template = useDispatchStore(
-    (state) => state.templates.find((item) => item.isDefault) ?? state.templates[0],
-  );
-  const markWhatsAppSent = useDispatchStore((state) => state.markWhatsAppSent);
+  const [selectedOrder, setSelectedOrder] = useState<DispatchOrder>();
+  const [dispatchOrder, setDispatchOrder] = useState<DispatchOrder>();
   const orders = useMemo(
     () =>
-      queueOrders.filter((order) => {
-        const matchesPayment = paymentFilter === "all" || order.paymentType === paymentFilter;
-        const matchesCourier =
-          !courierFilter || order.courier.toLowerCase().includes(courierFilter.toLowerCase());
-        const matchesCity = !cityFilter || order.city.toLowerCase().includes(cityFilter.toLowerCase());
-        const matchesState =
-          !stateFilter || order.state.toLowerCase().includes(stateFilter.toLowerCase());
-        const matchesDate = !dateFilter || order.orderDate.slice(0, 10) === dateFilter;
+      queueOrders
+        .filter((order) => {
+          const matchesPayment = paymentFilter === "all" || order.paymentType === paymentFilter;
+          const matchesCourier =
+            !courierFilter || order.courier.toLowerCase().includes(courierFilter.toLowerCase());
+          const matchesCity = !cityFilter || order.city.toLowerCase().includes(cityFilter.toLowerCase());
+          const matchesState =
+            !stateFilter || order.state.toLowerCase().includes(stateFilter.toLowerCase());
+          const matchesDate = !dateFilter || order.orderDate.slice(0, 10) === dateFilter;
 
-        return matchesPayment && matchesCourier && matchesCity && matchesState && matchesDate;
-      }),
+          return matchesPayment && matchesCourier && matchesCity && matchesState && matchesDate;
+        })
+        .sort((a, b) => b.orderDate.localeCompare(a.orderDate)),
     [cityFilter, courierFilter, dateFilter, paymentFilter, queueOrders, stateFilter],
   );
-
-  function sendWhatsApp(order: DispatchOrder) {
-    window.open(getWhatsAppUrl(order, template.body), "_blank", "noopener,noreferrer");
-    void markWhatsAppSent([order.id]);
-  }
 
   function sendNext() {
     const next = orders[0];
 
     if (next) {
-      sendWhatsApp(next);
+      setDispatchOrder(next);
     }
   }
 
@@ -104,7 +100,19 @@ export function DispatchQueuePage() {
       <DispatchOrdersTable
         orders={orders}
         emptyText="No pending WhatsApp orders."
-        onSendWhatsApp={sendWhatsApp}
+        onOpenOrder={setSelectedOrder}
+        onSendWhatsApp={setDispatchOrder}
+      />
+      <OrderDrawer
+        open={Boolean(selectedOrder)}
+        order={selectedOrder}
+        onOpenChange={(open) => !open && setSelectedOrder(undefined)}
+        onSendWhatsApp={setDispatchOrder}
+      />
+      <WhatsAppDispatchModal
+        open={Boolean(dispatchOrder)}
+        order={dispatchOrder}
+        onOpenChange={(open) => !open && setDispatchOrder(undefined)}
       />
     </motion.div>
   );

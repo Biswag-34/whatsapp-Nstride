@@ -1,5 +1,6 @@
 import type {
   AppSettings,
+  CommunicationMessage,
   DispatchHistoryEvent,
   DispatchOrder,
   ImportSession,
@@ -13,6 +14,7 @@ const STORAGE_KEY = "nstride-shopdeck-dispatch-fallback";
 interface Snapshot {
   dispatchHistory: DispatchHistoryEvent[];
   importSessions: ImportSession[];
+  messageHistory: CommunicationMessage[];
   orders: DispatchOrder[];
   settings?: AppSettings;
   templates: MessageTemplate[];
@@ -21,6 +23,7 @@ interface Snapshot {
 const emptySnapshot: Snapshot = {
   dispatchHistory: [],
   importSessions: [],
+  messageHistory: [],
   orders: [],
   templates: [],
 };
@@ -44,12 +47,25 @@ function sortByNewest<T extends { createdAt?: string; importedAt?: string }>(ite
   );
 }
 
+function sortOrdersByShopdeckDate(orders: DispatchOrder[]) {
+  return orders.sort((a, b) => {
+    const dateCompare = String(b.orderDate ?? "").localeCompare(String(a.orderDate ?? ""));
+
+    if (dateCompare !== 0) {
+      return dateCompare;
+    }
+
+    return String(b.orderId ?? "").localeCompare(String(a.orderId ?? ""));
+  });
+}
+
 export async function getStorageSnapshot(): Promise<Snapshot> {
   if (canUseIndexedDb()) {
-    const [orders, importSessions, dispatchHistory, templates, settings] = await Promise.all([
+    const [orders, importSessions, dispatchHistory, messageHistory, templates, settings] = await Promise.all([
       db.orders.toArray(),
       db.importSessions.toArray(),
       db.dispatchHistory.toArray(),
+      db.messageHistory.toArray(),
       db.templates.toArray(),
       db.settings.get("settings"),
     ]);
@@ -57,7 +73,8 @@ export async function getStorageSnapshot(): Promise<Snapshot> {
     return {
       dispatchHistory: sortByNewest(dispatchHistory),
       importSessions: sortByNewest(importSessions),
-      orders,
+      messageHistory: sortByNewest(messageHistory),
+      orders: sortOrdersByShopdeckDate(orders),
       settings,
       templates,
     };
@@ -69,6 +86,8 @@ export async function getStorageSnapshot(): Promise<Snapshot> {
     ...snapshot,
     dispatchHistory: sortByNewest(snapshot.dispatchHistory),
     importSessions: sortByNewest(snapshot.importSessions),
+    messageHistory: sortByNewest(snapshot.messageHistory),
+    orders: sortOrdersByShopdeckDate(snapshot.orders),
   };
 }
 
@@ -97,19 +116,19 @@ export async function upsertOrders(
   });
 }
 
-function createWhatsAppChange(order: DispatchOrder, timestamp: string): OrderChangeLogEntry {
+function createWhatsAppChange(order: DispatchOrder, timestamp: string, user: string): OrderChangeLogEntry {
   return {
     createdAt: timestamp,
-    description: `WhatsApp dispatch message sent for order #${order.orderId}.`,
+    description: `WhatsApp dispatch message sent for order #${order.orderId} by ${user}.`,
     id: crypto.randomUUID(),
     title: "WhatsApp Sent",
   };
 }
 
-function createWhatsAppHistory(order: DispatchOrder, timestamp: string): DispatchHistoryEvent {
+function createWhatsAppHistory(order: DispatchOrder, timestamp: string, user: string): DispatchHistoryEvent {
   return {
     createdAt: timestamp,
-    description: `WhatsApp dispatch message sent for order #${order.orderId}.`,
+    description: `WhatsApp dispatch message sent for order #${order.orderId} by ${user}.`,
     id: crypto.randomUUID(),
     orderId: order.orderId,
     title: "WhatsApp Sent",
@@ -117,7 +136,7 @@ function createWhatsAppHistory(order: DispatchOrder, timestamp: string): Dispatc
   };
 }
 
-export async function markOrdersWhatsAppSent(orderIds: string[]) {
+export async function markOrdersWhatsAppSent(orderIds: string[], user = "Dispatch Staff") {
   const timestamp = new Date().toISOString();
 
   if (canUseIndexedDb()) {
@@ -128,13 +147,13 @@ export async function markOrdersWhatsAppSent(orderIds: string[]) {
       await db.orders.bulkPut(
         orders.map((order) => ({
           ...order,
-          changeLog: [...order.changeLog, createWhatsAppChange(order, timestamp)],
+          changeLog: [...order.changeLog, createWhatsAppChange(order, timestamp, user)],
           status: "whatsapp_sent",
           updatedAt: timestamp,
           whatsappSentAt: timestamp,
         })),
       );
-      await db.dispatchHistory.bulkPut(orders.map((order) => createWhatsAppHistory(order, timestamp)));
+      await db.dispatchHistory.bulkPut(orders.map((order) => createWhatsAppHistory(order, timestamp, user)));
     });
     return;
   }
@@ -144,20 +163,36 @@ export async function markOrdersWhatsAppSent(orderIds: string[]) {
   writeFallback({
     ...snapshot,
     dispatchHistory: [
-      ...ordersToUpdate.map((order) => createWhatsAppHistory(order, timestamp)),
+      ...ordersToUpdate.map((order) => createWhatsAppHistory(order, timestamp, user)),
       ...snapshot.dispatchHistory,
     ],
     orders: snapshot.orders.map((order) =>
       orderIds.includes(order.id)
         ? {
             ...order,
-            changeLog: [...order.changeLog, createWhatsAppChange(order, timestamp)],
+            changeLog: [...order.changeLog, createWhatsAppChange(order, timestamp, user)],
             status: "whatsapp_sent",
             updatedAt: timestamp,
             whatsappSentAt: timestamp,
           }
         : order,
     ),
+  });
+}
+
+export async function saveCommunicationMessage(message: CommunicationMessage) {
+  if (canUseIndexedDb()) {
+    await db.messageHistory.put(message);
+    return;
+  }
+
+  const snapshot = readFallback();
+  writeFallback({
+    ...snapshot,
+    messageHistory: [
+      message,
+      ...snapshot.messageHistory.filter((current) => current.id !== message.id),
+    ],
   });
 }
 

@@ -8,6 +8,15 @@ export type DispatchOrderStatus =
 
 export type PaymentType = "COD" | "Prepaid" | "Unknown";
 
+export type MessageTemplateType =
+  | "default_dispatch"
+  | "delivered"
+  | "tracking_updated"
+  | "delay_notification"
+  | "replacement"
+  | "exchange"
+  | "return";
+
 export interface OrderChangeLogEntry {
   id: string;
   createdAt: string;
@@ -104,7 +113,19 @@ export interface MessageTemplate {
   name: string;
   body: string;
   isDefault: boolean;
+  type: MessageTemplateType;
   updatedAt: string;
+}
+
+export interface CommunicationMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  createdBy: string;
+  orderId: string;
+  templateId: string;
+  templateName: string;
+  templateType: MessageTemplateType;
 }
 
 export interface AppSettings {

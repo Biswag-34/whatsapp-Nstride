@@ -2,9 +2,10 @@ import { create } from "zustand";
 
 import { buildMetrics } from "@/features/dispatch/services/metrics";
 import { importShopdeckFile } from "@/features/dispatch/services/shopdeck-import-service";
-import { defaultDispatchTemplate } from "@/features/dispatch/services/template-engine";
+import { defaultMessageTemplates } from "@/features/dispatch/services/template-engine";
 import type {
   AppSettings,
+  CommunicationMessage,
   DispatchHistoryEvent,
   DispatchMetrics,
   DispatchOrder,
@@ -14,6 +15,7 @@ import type {
 import {
   getStorageSnapshot,
   markOrdersWhatsAppSent,
+  saveCommunicationMessage,
   saveSettings,
   saveTemplate,
   upsertOrders,
@@ -25,13 +27,15 @@ interface DispatchState {
   isLoading: boolean;
   lastImportSession?: ImportSession;
   lastError: string;
+  messageHistory: CommunicationMessage[];
   metrics: DispatchMetrics;
   orders: DispatchOrder[];
   settings: AppSettings;
   templates: MessageTemplate[];
   hydrate: () => Promise<void>;
   importFile: (file: File) => Promise<void>;
-  markWhatsAppSent: (orderIds: string[]) => Promise<void>;
+  markWhatsAppSent: (orderIds: string[], user?: string) => Promise<void>;
+  recordGeneratedMessage: (message: CommunicationMessage) => Promise<void>;
   saveTemplate: (template: MessageTemplate) => Promise<void>;
   saveSettings: (settings: AppSettings) => Promise<void>;
 }
@@ -44,15 +48,19 @@ const defaultSettings: AppSettings = {
   website: "https://nstride.shop",
 };
 
-const defaultTemplate: MessageTemplate = {
-  id: "default-dispatch",
-  body: defaultDispatchTemplate,
-  isDefault: true,
-  name: "Default Dispatch Message",
-  updatedAt: new Date().toISOString(),
-};
-
 const emptyMetrics = buildMetrics([], []);
+
+function mergeTemplates(templates: MessageTemplate[]) {
+  const normalized = templates.map((template) => ({
+    ...template,
+    type: template.type ?? ("default_dispatch" as const),
+  }));
+  const byId = new Map(defaultMessageTemplates.map((template) => [template.id, template]));
+
+  normalized.forEach((template) => byId.set(template.id, template));
+
+  return Array.from(byId.values());
+}
 
 export const useDispatchStore = create<DispatchState>((set, get) => ({
   dispatchHistory: [],
@@ -60,22 +68,25 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
   isLoading: false,
   lastImportSession: undefined,
   lastError: "",
+  messageHistory: [],
   metrics: emptyMetrics,
   orders: [],
   settings: defaultSettings,
-  templates: [defaultTemplate],
+  templates: defaultMessageTemplates,
   hydrate: async () => {
     set({ isLoading: true, lastError: "" });
 
     try {
       const snapshot = await getStorageSnapshot();
-      const templates = snapshot.templates.length > 0 ? snapshot.templates : [defaultTemplate];
+      const templates =
+        snapshot.templates.length > 0 ? mergeTemplates(snapshot.templates) : defaultMessageTemplates;
       const settings = snapshot.settings ?? defaultSettings;
 
       set({
         dispatchHistory: snapshot.dispatchHistory,
         importSessions: snapshot.importSessions,
         isLoading: false,
+        messageHistory: snapshot.messageHistory,
         metrics: buildMetrics(snapshot.orders, snapshot.importSessions),
         orders: snapshot.orders,
         settings,
@@ -97,8 +108,12 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
       set({ isLoading: false, lastError: "Import failed. Check the file format." });
     }
   },
-  markWhatsAppSent: async (orderIds) => {
-    await markOrdersWhatsAppSent(orderIds);
+  markWhatsAppSent: async (orderIds, user = "Dispatch Staff") => {
+    await markOrdersWhatsAppSent(orderIds, user);
+    await get().hydrate();
+  },
+  recordGeneratedMessage: async (message) => {
+    await saveCommunicationMessage(message);
     await get().hydrate();
   },
   saveSettings: async (settings) => {
