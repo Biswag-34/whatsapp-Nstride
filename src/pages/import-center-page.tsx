@@ -13,6 +13,7 @@ export function ImportCenterPage() {
   const importFile = useDispatchStore((state) => state.importFile);
   const isLoading = useDispatchStore((state) => state.isLoading);
   const lastError = useDispatchStore((state) => state.lastError);
+  const lastImportSession = useDispatchStore((state) => state.lastImportSession);
   const importSessions = useDispatchStore((state) => state.importSessions);
 
   async function handleFiles(files: FileList | null) {
@@ -53,7 +54,7 @@ export function ImportCenterPage() {
             </div>
             <h2 className="mt-4 text-lg font-semibold">Drop latest Shopdeck Order Summary</h2>
             <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
-              CSV, XLS, and XLSX are supported. Duplicate order IDs are skipped and changed orders are updated.
+              CSV, XLS, and XLSX are supported. Order ID is the primary key, duplicates are skipped, and changed orders are updated.
             </p>
             <input
               ref={inputRef}
@@ -75,6 +76,48 @@ export function ImportCenterPage() {
           <CardTitle>Recent Imports</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {lastImportSession ? (
+            <div className="rounded-xl border border-border bg-background/50 p-4">
+              <div className="grid gap-3 text-sm sm:grid-cols-4">
+                <span className="rounded-lg bg-primary/10 p-3 text-primary">
+                  Imported: {lastImportSession.imported}
+                </span>
+                <span className="rounded-lg bg-emerald-500/10 p-3 text-emerald-700 dark:text-emerald-200">
+                  Updated: {lastImportSession.updated}
+                </span>
+                <span className="rounded-lg bg-muted/70 p-3 text-muted-foreground">
+                  Skipped: {lastImportSession.skipped}
+                </span>
+                <span className="rounded-lg bg-red-500/10 p-3 text-red-600 dark:text-red-300">
+                  Errors: {lastImportSession.errors}
+                </span>
+              </div>
+              {lastImportSession.validationErrors.length > 0 ? (
+                <div className="mt-4 max-h-64 overflow-auto rounded-lg border border-border">
+                  <table className="w-full min-w-[620px] text-sm">
+                    <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2">Row</th>
+                        <th className="px-3 py-2">Order ID</th>
+                        <th className="px-3 py-2">Field</th>
+                        <th className="px-3 py-2">Issue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lastImportSession.validationErrors.slice(0, 50).map((issue) => (
+                        <tr key={`${issue.rowNumber}-${issue.field}-${issue.message}`} className="border-t border-border">
+                          <td className="px-3 py-2">{issue.rowNumber}</td>
+                          <td className="px-3 py-2">{issue.orderId || "Missing"}</td>
+                          <td className="px-3 py-2">{issue.field}</td>
+                          <td className="px-3 py-2 text-red-600 dark:text-red-300">{issue.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {importSessions.slice(0, 8).map((session) => (
             <div
               key={session.id}
@@ -85,7 +128,7 @@ export function ImportCenterPage() {
                 <p className="text-muted-foreground">{formatDate(session.importedAt)}</p>
               </div>
               <p className="text-muted-foreground">
-                {session.inserted} imported - {session.updated} updated - {session.duplicates} duplicates - {session.errors} errors
+                {session.imported} imported - {session.updated} updated - {session.skipped} skipped - {session.errors} errors - {session.durationMs}ms
               </p>
             </div>
           ))}

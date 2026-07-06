@@ -5,11 +5,17 @@ export function StatusPill({ status }: { status: DispatchOrderStatus }) {
   const label = {
     cancelled: "Cancelled",
     delivered: "Delivered",
-    pending_whatsapp: "Pending WhatsApp",
+    pending_dispatch: "Pending Dispatch",
+    rto: "RTO",
+    whatsapp_ready: "WhatsApp Ready",
     whatsapp_sent: "WhatsApp Sent",
   }[status];
   const variant =
-    status === "pending_whatsapp" ? "warning" : status === "cancelled" ? "slate" : "success";
+    status === "pending_dispatch" || status === "whatsapp_ready"
+      ? "warning"
+      : status === "cancelled" || status === "rto"
+        ? "slate"
+        : "success";
 
   return <Badge variant={variant}>{label}</Badge>;
 }

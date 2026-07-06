@@ -1,16 +1,17 @@
-import { db, canUseIndexedDb } from "@/features/storage/db";
 import type {
-  ActivityEvent,
   AppSettings,
+  DispatchHistoryEvent,
   DispatchOrder,
   ImportSession,
   MessageTemplate,
+  OrderChangeLogEntry,
 } from "@/features/dispatch/types";
+import { canUseIndexedDb, db } from "@/features/storage/db";
 
-const STORAGE_KEY = "nstride-dispatch-fallback";
+const STORAGE_KEY = "nstride-shopdeck-dispatch-fallback";
 
 interface Snapshot {
-  activities: ActivityEvent[];
+  dispatchHistory: DispatchHistoryEvent[];
   importSessions: ImportSession[];
   orders: DispatchOrder[];
   settings?: AppSettings;
@@ -18,7 +19,7 @@ interface Snapshot {
 }
 
 const emptySnapshot: Snapshot = {
-  activities: [],
+  dispatchHistory: [],
   importSessions: [],
   orders: [],
   templates: [],
@@ -37,36 +38,50 @@ function writeFallback(snapshot: Snapshot) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
 }
 
+function sortByNewest<T extends { createdAt?: string; importedAt?: string }>(items: T[]) {
+  return items.sort((a, b) =>
+    String(b.createdAt ?? b.importedAt ?? "").localeCompare(String(a.createdAt ?? a.importedAt ?? "")),
+  );
+}
+
 export async function getStorageSnapshot(): Promise<Snapshot> {
   if (canUseIndexedDb()) {
-    const [orders, importSessionsRaw, activitiesRaw, templates, settings] = await Promise.all([
+    const [orders, importSessions, dispatchHistory, templates, settings] = await Promise.all([
       db.orders.toArray(),
       db.importSessions.toArray(),
-      db.activities.toArray(),
+      db.dispatchHistory.toArray(),
       db.templates.toArray(),
       db.settings.get("settings"),
     ]);
-    const importSessions = importSessionsRaw.sort((a, b) =>
-      b.importedAt.localeCompare(a.importedAt),
-    );
-    const activities = activitiesRaw.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-    return { activities, importSessions, orders, settings, templates };
+    return {
+      dispatchHistory: sortByNewest(dispatchHistory),
+      importSessions: sortByNewest(importSessions),
+      orders,
+      settings,
+      templates,
+    };
   }
 
-  return readFallback();
+  const snapshot = readFallback();
+
+  return {
+    ...snapshot,
+    dispatchHistory: sortByNewest(snapshot.dispatchHistory),
+    importSessions: sortByNewest(snapshot.importSessions),
+  };
 }
 
 export async function upsertOrders(
   orders: DispatchOrder[],
   session: ImportSession,
-  activities: ActivityEvent[],
+  dispatchHistory: DispatchHistoryEvent[],
 ) {
   if (canUseIndexedDb()) {
-    await db.transaction("rw", db.orders, db.importSessions, db.activities, async () => {
+    await db.transaction("rw", db.orders, db.importSessions, db.dispatchHistory, async () => {
       await db.orders.bulkPut(orders);
       await db.importSessions.put(session);
-      await db.activities.bulkPut(activities);
+      await db.dispatchHistory.bulkPut(dispatchHistory);
     });
     return;
   }
@@ -76,58 +91,67 @@ export async function upsertOrders(
   orders.forEach((order) => byId.set(order.id, order));
   writeFallback({
     ...snapshot,
-    activities: [...activities, ...snapshot.activities],
+    dispatchHistory: [...dispatchHistory, ...snapshot.dispatchHistory],
     importSessions: [session, ...snapshot.importSessions],
     orders: Array.from(byId.values()),
   });
+}
+
+function createWhatsAppChange(order: DispatchOrder, timestamp: string): OrderChangeLogEntry {
+  return {
+    createdAt: timestamp,
+    description: `WhatsApp dispatch message sent for order #${order.orderId}.`,
+    id: crypto.randomUUID(),
+    title: "WhatsApp Sent",
+  };
+}
+
+function createWhatsAppHistory(order: DispatchOrder, timestamp: string): DispatchHistoryEvent {
+  return {
+    createdAt: timestamp,
+    description: `WhatsApp dispatch message sent for order #${order.orderId}.`,
+    id: crypto.randomUUID(),
+    orderId: order.orderId,
+    title: "WhatsApp Sent",
+    type: "whatsapp",
+  };
 }
 
 export async function markOrdersWhatsAppSent(orderIds: string[]) {
   const timestamp = new Date().toISOString();
 
   if (canUseIndexedDb()) {
-    await db.transaction("rw", db.orders, db.activities, async () => {
-      const orders = await db.orders.bulkGet(orderIds);
-      await db.orders.bulkPut(
-        orders
-          .filter((order): order is DispatchOrder => Boolean(order))
-          .map((order) => ({
-            ...order,
-            status: "whatsapp_sent",
-            updatedAt: timestamp,
-            whatsappSentAt: timestamp,
-          })),
+    await db.transaction("rw", db.orders, db.dispatchHistory, async () => {
+      const orders = (await db.orders.bulkGet(orderIds)).filter(
+        (order): order is DispatchOrder => Boolean(order),
       );
-      await db.activities.bulkPut(
-        orderIds.map((orderId) => ({
-          id: crypto.randomUUID(),
-          createdAt: timestamp,
-          description: `WhatsApp marked sent for ${orderId}`,
-          title: "WhatsApp Sent",
-          type: "whatsapp",
+      await db.orders.bulkPut(
+        orders.map((order) => ({
+          ...order,
+          changeLog: [...order.changeLog, createWhatsAppChange(order, timestamp)],
+          status: "whatsapp_sent",
+          updatedAt: timestamp,
+          whatsappSentAt: timestamp,
         })),
       );
+      await db.dispatchHistory.bulkPut(orders.map((order) => createWhatsAppHistory(order, timestamp)));
     });
     return;
   }
 
   const snapshot = readFallback();
+  const ordersToUpdate = snapshot.orders.filter((order) => orderIds.includes(order.id));
   writeFallback({
     ...snapshot,
-    activities: [
-      ...orderIds.map((orderId) => ({
-        id: crypto.randomUUID(),
-        createdAt: timestamp,
-        description: `WhatsApp marked sent for ${orderId}`,
-        title: "WhatsApp Sent",
-        type: "whatsapp" as const,
-      })),
-      ...snapshot.activities,
+    dispatchHistory: [
+      ...ordersToUpdate.map((order) => createWhatsAppHistory(order, timestamp)),
+      ...snapshot.dispatchHistory,
     ],
     orders: snapshot.orders.map((order) =>
       orderIds.includes(order.id)
         ? {
             ...order,
+            changeLog: [...order.changeLog, createWhatsAppChange(order, timestamp)],
             status: "whatsapp_sent",
             updatedAt: timestamp,
             whatsappSentAt: timestamp,

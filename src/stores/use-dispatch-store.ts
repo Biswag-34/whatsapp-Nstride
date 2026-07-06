@@ -1,11 +1,11 @@
 import { create } from "zustand";
 
 import { buildMetrics } from "@/features/dispatch/services/metrics";
-import { parseOrderFile } from "@/features/dispatch/services/import-parser";
+import { importShopdeckFile } from "@/features/dispatch/services/shopdeck-import-service";
 import { defaultDispatchTemplate } from "@/features/dispatch/services/template-engine";
 import type {
-  ActivityEvent,
   AppSettings,
+  DispatchHistoryEvent,
   DispatchMetrics,
   DispatchOrder,
   ImportSession,
@@ -20,9 +20,10 @@ import {
 } from "@/features/storage/repository";
 
 interface DispatchState {
-  activities: ActivityEvent[];
+  dispatchHistory: DispatchHistoryEvent[];
   importSessions: ImportSession[];
   isLoading: boolean;
+  lastImportSession?: ImportSession;
   lastError: string;
   metrics: DispatchMetrics;
   orders: DispatchOrder[];
@@ -54,9 +55,10 @@ const defaultTemplate: MessageTemplate = {
 const emptyMetrics = buildMetrics([], []);
 
 export const useDispatchStore = create<DispatchState>((set, get) => ({
-  activities: [],
+  dispatchHistory: [],
   importSessions: [],
   isLoading: false,
+  lastImportSession: undefined,
   lastError: "",
   metrics: emptyMetrics,
   orders: [],
@@ -71,7 +73,7 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
       const settings = snapshot.settings ?? defaultSettings;
 
       set({
-        activities: snapshot.activities,
+        dispatchHistory: snapshot.dispatchHistory,
         importSessions: snapshot.importSessions,
         isLoading: false,
         metrics: buildMetrics(snapshot.orders, snapshot.importSessions),
@@ -87,8 +89,9 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
     set({ isLoading: true, lastError: "" });
 
     try {
-      const parsed = await parseOrderFile(file, get().orders);
-      await upsertOrders(parsed.orders, parsed.session, parsed.activities);
+      const parsed = await importShopdeckFile(file, get().orders);
+      await upsertOrders(parsed.orders, parsed.session, parsed.dispatchHistory);
+      set({ lastImportSession: parsed.session });
       await get().hydrate();
     } catch {
       set({ isLoading: false, lastError: "Import failed. Check the file format." });

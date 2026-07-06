@@ -43,7 +43,7 @@ export function DispatchOrdersTable({
   const columns = useMemo<ColumnDef<DispatchOrder>[]>(
     () => [
       {
-        accessorKey: "shopdeckOrderId",
+        accessorKey: "orderId",
         header: ({ column }) => (
           <button type="button" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
             <SortButton label="Order" />

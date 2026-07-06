@@ -17,7 +17,7 @@ import { useDispatchStore } from "@/stores/use-dispatch-store";
 
 export function DashboardPage() {
   const metrics = useDispatchStore((state) => state.metrics);
-  const activities = useDispatchStore((state) => state.activities);
+  const dispatchHistory = useDispatchStore((state) => state.dispatchHistory);
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
@@ -52,9 +52,9 @@ export function DashboardPage() {
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <span className="rounded-lg bg-muted/60 p-3">Inserted: {metrics.latestImportSession.inserted}</span>
+                  <span className="rounded-lg bg-muted/60 p-3">Imported: {metrics.latestImportSession.imported}</span>
                   <span className="rounded-lg bg-muted/60 p-3">Updated: {metrics.latestImportSession.updated}</span>
-                  <span className="rounded-lg bg-muted/60 p-3">Duplicates: {metrics.latestImportSession.duplicates}</span>
+                  <span className="rounded-lg bg-muted/60 p-3">Skipped: {metrics.latestImportSession.skipped}</span>
                   <span className="rounded-lg bg-muted/60 p-3">Errors: {metrics.latestImportSession.errors}</span>
                 </div>
               </div>
@@ -70,13 +70,13 @@ export function DashboardPage() {
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {activities.slice(0, 6).map((activity) => (
+            {dispatchHistory.slice(0, 6).map((activity) => (
               <div key={activity.id} className="rounded-lg border border-border bg-background/45 p-3">
                 <p className="text-sm font-medium">{activity.title}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{activity.description}</p>
               </div>
             ))}
-            {activities.length === 0 ? (
+            {dispatchHistory.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Activity will appear after imports or WhatsApp dispatches.
               </p>

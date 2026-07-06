@@ -34,7 +34,7 @@ https://nstride.shop`;
 export function renderDispatchMessage(order: DispatchOrder, template: string) {
   return template
     .replaceAll("{{CustomerName}}", order.customerName)
-    .replaceAll("{{OrderID}}", order.shopdeckOrderId)
+    .replaceAll("{{OrderID}}", order.orderId)
     .replaceAll("{{Product}}", order.product)
     .replaceAll("{{Size}}", order.size || "Not specified")
     .replaceAll("{{Quantity}}", String(order.quantity))

@@ -1,17 +1,50 @@
 export type DispatchOrderStatus =
-  | "pending_whatsapp"
+  | "pending_dispatch"
+  | "whatsapp_ready"
   | "whatsapp_sent"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "rto";
 
 export type PaymentType = "COD" | "Prepaid" | "Unknown";
 
+export interface OrderChangeLogEntry {
+  id: string;
+  createdAt: string;
+  description: string;
+  field?: keyof ShopdeckOrderFields;
+  importSessionId?: string;
+  title: string;
+}
+
+export interface ShopdeckOrderFields {
+  address: string;
+  amount: number;
+  city: string;
+  courier: string;
+  customerName: string;
+  orderDate: string;
+  paymentType: PaymentType;
+  phone: string;
+  pinCode: string;
+  product: string;
+  quantity: number;
+  size: string;
+  state: string;
+  trackingId: string;
+  trackingUrl: string;
+}
+
 export interface DispatchOrder {
   id: string;
+  orderId: string;
   shopdeckOrderId: string;
   customerName: string;
   phone: string;
   address: string;
+  city: string;
+  state: string;
+  pinCode: string;
   product: string;
   amount: number;
   paymentType: PaymentType;
@@ -23,9 +56,11 @@ export interface DispatchOrder {
   size: string;
   status: DispatchOrderStatus;
   importSessionId: string;
-  rowHash: string;
+  fieldFingerprint: string;
+  sourceHeaders: string[];
   createdAt: string;
   updatedAt: string;
+  changeLog: OrderChangeLogEntry[];
   whatsappSentAt?: string;
 }
 
@@ -34,18 +69,32 @@ export interface ImportSession {
   fileName: string;
   importedAt: string;
   totalRows: number;
-  inserted: number;
+  imported: number;
   updated: number;
-  duplicates: number;
+  skipped: number;
   errors: number;
+  durationMs: number;
+  duplicateOrderIds: string[];
+  validationErrors: ImportValidationIssue[];
+  sourceHeaders: string[];
 }
 
-export interface ActivityEvent {
+export interface ImportValidationIssue {
+  field: string;
+  message: string;
+  orderId?: string;
+  rowNumber: number;
+  severity: "error" | "warning";
+}
+
+export interface DispatchHistoryEvent {
   id: string;
-  type: "import" | "update" | "whatsapp" | "system";
-  title: string;
-  description: string;
   createdAt: string;
+  description: string;
+  importSessionId?: string;
+  orderId?: string;
+  title: string;
+  type: "import" | "update" | "whatsapp" | "system" | "validation";
 }
 
 export interface MessageTemplate {

@@ -1,8 +1,8 @@
 import Dexie, { type Table } from "dexie";
 
 import type {
-  ActivityEvent,
   AppSettings,
+  DispatchHistoryEvent,
   DispatchOrder,
   ImportSession,
   MessageTemplate,
@@ -11,17 +11,17 @@ import type {
 export class DispatchDatabase extends Dexie {
   orders!: Table<DispatchOrder, string>;
   importSessions!: Table<ImportSession, string>;
-  activities!: Table<ActivityEvent, string>;
+  dispatchHistory!: Table<DispatchHistoryEvent, string>;
   templates!: Table<MessageTemplate, string>;
   settings!: Table<AppSettings, string>;
 
   constructor() {
-    super("nstride-dispatch-center");
+    super("nstride-shopdeck-dispatch-center");
     this.version(1).stores({
-      activities: "id, createdAt, type",
+      dispatchHistory: "id, orderId, createdAt, type, importSessionId",
       importSessions: "id, importedAt, fileName",
       orders:
-        "id, shopdeckOrderId, phone, status, importSessionId, updatedAt, whatsappSentAt, paymentType",
+        "id, orderId, phone, status, importSessionId, updatedAt, whatsappSentAt, paymentType, courier, city, state, orderDate",
       settings: "id",
       templates: "id, isDefault, updatedAt",
     });
