@@ -13,7 +13,9 @@ export const SHOPDECK_FIELD_ALIASES: Record<ShopdeckField, string[]> = {
   ],
   amount: [
     "Amount",
+    "Amount to Collect",
     "Final Amount",
+    "Final Selling Price",
     "Net Amount",
     "Order Amount",
     "Order Total",
@@ -26,18 +28,22 @@ export const SHOPDECK_FIELD_ALIASES: Record<ShopdeckField, string[]> = {
   orderDate: ["Order Date", "Created At", "Date", "Order Created At"],
   orderId: ["Order ID", "Order Id", "Order Number", "Order No", "Shopdeck Order ID"],
   paymentType: ["Payment", "Payment Method", "Payment Mode", "Payment Type"],
-  phone: ["Phone", "Phone Number", "Mobile", "Mobile Number", "Contact Number"],
+  phone: ["Phone", "Phone Number", "Mobile", "Mobile Number", "Contact Number", "Customer Number"],
   pinCode: ["PIN Code", "Pincode", "Pin", "Postal Code", "Zip", "Zip Code"],
   product: ["Product", "Product Name", "Item", "Item Name", "SKU Name"],
   quantity: ["Quantity", "Qty", "Items", "Product Quantity"],
   size: ["Size", "Variant", "Variant Name", "Product Size"],
   state: ["State", "Customer State", "Shipping State"],
-  trackingId: ["Tracking ID", "Tracking Id", "Tracking", "AWB", "AWB Number"],
-  trackingUrl: ["Tracking URL", "Tracking Link", "Track URL", "Shipment Tracking Link"],
+  trackingId: ["Tracking ID", "Tracking Id", "Tracking", "AWB", "AWB Number", "AWB NO."],
+  trackingUrl: ["Tracking URL", "Tracking Link", "Track URL", "Track Link", "Shipment Tracking Link"],
 };
 
 export function normalizeShopdeckHeader(value: string) {
-  return value.toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function resolveShopdeckField(header: string): ShopdeckField | undefined {

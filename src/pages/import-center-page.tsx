@@ -29,7 +29,7 @@ export function ImportCenterPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Import Center</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Import Shopdeck CSV or Excel files into the local dispatch queue.
+          Built for Shopdeck Order Summary exports with Customer Number, AWB NO., Track Link, Courier Partner, and Final Selling Price columns.
         </p>
       </div>
       <Card className="glass-panel">
@@ -52,9 +52,9 @@ export function ImportCenterPage() {
             <div className="flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <UploadCloud className="size-6" />
             </div>
-            <h2 className="mt-4 text-lg font-semibold">Drop latest Shopdeck Order Summary</h2>
+            <h2 className="mt-4 text-lg font-semibold">Drop Shopdeck Order Summary CSV</h2>
             <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
-              CSV, XLS, and XLSX are supported. Order ID is the primary key, duplicates are skipped, and changed orders are updated.
+              Order ID is the primary key. Customer Number is used as phone, AWB NO. as tracking, and changed Shopdeck rows update existing orders.
             </p>
             <input
               ref={inputRef}
@@ -114,6 +114,18 @@ export function ImportCenterPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              ) : null}
+              {lastImportSession.sourceHeaders.length > 0 ? (
+                <div className="mt-4">
+                  <p className="mb-2 text-sm font-medium">Detected Shopdeck Columns</p>
+                  <div className="flex flex-wrap gap-2">
+                    {lastImportSession.sourceHeaders.map((header) => (
+                      <span key={header} className="rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">
+                        {header}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </div>

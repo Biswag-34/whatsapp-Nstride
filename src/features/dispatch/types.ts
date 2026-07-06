@@ -58,6 +58,8 @@ export interface DispatchOrder {
   importSessionId: string;
   fieldFingerprint: string;
   sourceHeaders: string[];
+  sourceRow: Record<string, string>;
+  sourceRowFingerprint: string;
   createdAt: string;
   updatedAt: string;
   changeLog: OrderChangeLogEntry[];

@@ -54,6 +54,14 @@ function fingerprint(fields: ShopdeckOrderFields) {
   return JSON.stringify(COMPARABLE_FIELDS.map((field) => [field, fields[field] ?? ""]));
 }
 
+function sourceFingerprint(sourceRow: Record<string, string>) {
+  return JSON.stringify(
+    Object.entries(sourceRow)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => [key, value ?? ""]),
+  );
+}
+
 function changeTitle(field: keyof ShopdeckOrderFields, previous: unknown, next: unknown) {
   const label = FIELD_LABELS[field];
 
@@ -118,6 +126,8 @@ function createOrder(
     importSessionId,
     orderId: row.orderId,
     shopdeckOrderId: row.orderId,
+    sourceRow: row.sourceRow,
+    sourceRowFingerprint: sourceFingerprint(row.sourceRow),
     sourceHeaders,
     status: "pending_dispatch",
     updatedAt: timestamp,
@@ -168,8 +178,19 @@ export function applyShopdeckRows(
     });
 
     if (changes.length === 0 || existing.fieldFingerprint === fingerprint(row.fields)) {
-      skipped += 1;
-      return;
+      if (existing.sourceRowFingerprint === sourceFingerprint(row.sourceRow)) {
+        skipped += 1;
+        return;
+      }
+
+      changes.push(
+        createChangeLogEntry(
+          "Shopdeck Row Updated",
+          "One or more non-dispatch Shopdeck columns changed.",
+          timestamp,
+          importSessionId,
+        ),
+      );
     }
 
     const order: DispatchOrder = {
@@ -178,6 +199,8 @@ export function applyShopdeckRows(
       changeLog: [...existing.changeLog, ...changes],
       fieldFingerprint: fingerprint(row.fields),
       importSessionId,
+      sourceRow: row.sourceRow,
+      sourceRowFingerprint: sourceFingerprint(row.sourceRow),
       sourceHeaders,
       status: "pending_dispatch",
       updatedAt: timestamp,

@@ -29,7 +29,7 @@ export function DashboardPage() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard icon={PackageCheck} label="Total Orders" value={metrics.totalOrders} />
-        <MetricCard icon={BellDot} label="Pending WhatsApp" tone="amber" value={metrics.pendingWhatsApp} />
+        <MetricCard icon={BellDot} label="Pending Dispatch" tone="amber" value={metrics.pendingWhatsApp} />
         <MetricCard icon={CheckCircle2} label="WhatsApp Sent" tone="emerald" value={metrics.whatsappSent} />
         <MetricCard icon={PackageX} label="Cancelled" tone="slate" value={metrics.cancelled} />
         <MetricCard icon={Clock3} label="Delivered" value={metrics.delivered} />
