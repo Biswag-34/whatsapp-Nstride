@@ -72,6 +72,8 @@ export interface DispatchOrder {
   createdAt: string;
   updatedAt: string;
   changeLog: OrderChangeLogEntry[];
+  whatsappOpenedAt?: string;
+  whatsappOpenedBy?: string;
   whatsappSentAt?: string;
 }
 

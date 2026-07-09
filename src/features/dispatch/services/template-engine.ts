@@ -1,62 +1,26 @@
 import { getOrderVariant } from "@/features/dispatch/services/operations";
+import { normalizeWhatsAppPhone } from "@/features/dispatch/services/whatsapp-service";
 import type { DispatchOrder, MessageTemplate } from "@/features/dispatch/types";
 import { formatCurrency } from "@/lib/utils";
 
-export const defaultDispatchTemplate = `Hello {{Customer}} 👋
+export const defaultDispatchTemplate = `Hello {{Customer}},
 
-Thank you for choosing N-Stride.
+Your N-Stride order has been dispatched.
 
-Your order has been successfully dispatched.
+Order ID: {{OrderID}}
+Item: {{Product}}
+Qty: {{Quantity}}
+Amount: {{Amount}} ({{Payment}})
 
-━━━━━━━━━━━━━━━
+Courier: {{Courier}}
+Tracking ID: {{Tracking}}
+Track: {{TrackingURL}}
 
-📦 ORDER DETAILS
-
-Order ID:
-{{OrderID}}
-
-Product:
-{{Product}}
-
-Variant:
-{{Variant}}
-
-Size:
-{{Size}}
-
-Quantity:
-{{Quantity}}
-
-Amount:
-{{Amount}}
-
-Payment:
-{{Payment}}
-
-━━━━━━━━━━━━━━━
-
-🚚 SHIPPING DETAILS
-
-Courier:
-{{Courier}}
-
-Tracking ID:
-{{Tracking}}
-
-Track Shipment:
-{{TrackingURL}}
-
-━━━━━━━━━━━━━━━
-
-📍 DELIVERY ADDRESS
-
+Deliver to:
 {{Address}}
 
-━━━━━━━━━━━━━━━
-
-Thank you for choosing N-Stride.
-
-Comfort • Protection • Every Step Matters.
+N-Stride
+Comfort - Protection - Every Step Matters
 
 https://nstride.shop`;
 
@@ -70,16 +34,14 @@ export const defaultMessageTemplates: MessageTemplate[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    body: `Hello {{Customer}} 👋
+    body: `Hello {{Customer}},
 
 Your N-Stride order {{OrderID}} has been delivered.
 
-We hope every step feels comfortable and protected.
-
 Product: {{Product}}
-Amount: {{Amount}}
+Amount: {{Amount}} ({{Payment}})
 
-Comfort • Protection • Every Step Matters.
+Thank you for choosing N-Stride.
 https://nstride.shop`,
     id: "delivered",
     isDefault: false,
@@ -88,16 +50,15 @@ https://nstride.shop`,
     updatedAt: new Date().toISOString(),
   },
   {
-    body: `Hello {{Customer}} 👋
+    body: `Hello {{Customer}},
 
-Tracking has been updated for your N-Stride order.
+Tracking has been updated for your N-Stride order {{OrderID}}.
 
-Order ID: {{OrderID}}
 Courier: {{Courier}}
 Tracking ID: {{Tracking}}
 Track: {{TrackingURL}}
 
-Comfort • Protection • Every Step Matters.`,
+N-Stride`,
     id: "tracking-updated",
     isDefault: false,
     name: "Tracking Updated",
@@ -105,16 +66,15 @@ Comfort • Protection • Every Step Matters.`,
     updatedAt: new Date().toISOString(),
   },
   {
-    body: `Hello {{Customer}} 👋
+    body: `Hello {{Customer}},
 
 Your N-Stride order {{OrderID}} is taking a little longer than expected.
 
-Courier: {{Courier}}
-Tracking ID: {{Tracking}}
+Tracking: {{Tracking}}
 Track: {{TrackingURL}}
 
 Thank you for your patience.
-Comfort • Protection • Every Step Matters.`,
+N-Stride`,
     id: "delay-notification",
     isDefault: false,
     name: "Delay Notification",
@@ -122,15 +82,14 @@ Comfort • Protection • Every Step Matters.`,
     updatedAt: new Date().toISOString(),
   },
   {
-    body: `Hello {{Customer}} 👋
+    body: `Hello {{Customer}},
 
-Your replacement request for N-Stride order {{OrderID}} has been noted.
+Your replacement request for order {{OrderID}} has been noted.
 
-Product: {{Product}}
-Size: {{Size}}
+Item: {{Product}}
 Address: {{Address}}
 
-Our team will coordinate the next step.`,
+N-Stride support will follow up shortly.`,
     id: "replacement",
     isDefault: false,
     name: "Replacement",
@@ -138,13 +97,12 @@ Our team will coordinate the next step.`,
     updatedAt: new Date().toISOString(),
   },
   {
-    body: `Hello {{Customer}} 👋
+    body: `Hello {{Customer}},
 
 Your exchange request for order {{OrderID}} has been noted.
 
-Product: {{Product}}
-Current Size: {{Size}}
-Delivery Address: {{Address}}
+Item: {{Product}}
+Address: {{Address}}
 
 N-Stride support will follow up shortly.`,
     id: "exchange",
@@ -154,15 +112,14 @@ N-Stride support will follow up shortly.`,
     updatedAt: new Date().toISOString(),
   },
   {
-    body: `Hello {{Customer}} 👋
+    body: `Hello {{Customer}},
 
-Your return request for N-Stride order {{OrderID}} has been noted.
+Your return request for order {{OrderID}} has been noted.
 
-Product: {{Product}}
-Amount: {{Amount}}
-Address: {{Address}}
+Item: {{Product}}
+Amount: {{Amount}} ({{Payment}})
 
-Our team will review and follow up.`,
+N-Stride support will follow up shortly.`,
     id: "return",
     isDefault: false,
     name: "Return",
@@ -204,6 +161,6 @@ export function renderDispatchMessage(order: DispatchOrder, template: string) {
 }
 
 export function getWhatsAppUrl(order: DispatchOrder, template: string) {
-  const phone = order.phone.replace(/\D/g, "");
-  return `https://wa.me/${phone}?text=${encodeURIComponent(renderMessageTemplate(order, template))}`;
+  const phone = normalizeWhatsAppPhone(order.phone);
+  return `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(renderMessageTemplate(order, template))}`;
 }

@@ -136,6 +136,76 @@ function createWhatsAppHistory(order: DispatchOrder, timestamp: string, user: st
   };
 }
 
+function createWhatsAppOpenedChange(order: DispatchOrder, timestamp: string, user: string): OrderChangeLogEntry {
+  return {
+    createdAt: timestamp,
+    description: `WhatsApp Web opened for order #${order.orderId} by ${user}.`,
+    id: crypto.randomUUID(),
+    title: "Opened in WhatsApp",
+  };
+}
+
+function createWhatsAppOpenedHistory(order: DispatchOrder, timestamp: string, user: string): DispatchHistoryEvent {
+  return {
+    createdAt: timestamp,
+    description: `WhatsApp Web opened for order #${order.orderId} by ${user}.`,
+    id: crypto.randomUUID(),
+    orderId: order.orderId,
+    title: "Opened in WhatsApp",
+    type: "whatsapp",
+  };
+}
+
+export async function markOrderWhatsAppOpened(orderId: string, user = "Dispatch Staff") {
+  const timestamp = new Date().toISOString();
+
+  if (canUseIndexedDb()) {
+    await db.transaction("rw", db.orders, db.dispatchHistory, async () => {
+      const order = await db.orders.get(orderId);
+
+      if (!order) {
+        return;
+      }
+
+      await db.orders.put({
+        ...order,
+        changeLog: [...order.changeLog, createWhatsAppOpenedChange(order, timestamp, user)],
+        updatedAt: timestamp,
+        whatsappOpenedAt: timestamp,
+        whatsappOpenedBy: user,
+      });
+      await db.dispatchHistory.put(createWhatsAppOpenedHistory(order, timestamp, user));
+    });
+    return;
+  }
+
+  const snapshot = readFallback();
+  const orderToUpdate = snapshot.orders.find((order) => order.id === orderId);
+
+  if (!orderToUpdate) {
+    return;
+  }
+
+  writeFallback({
+    ...snapshot,
+    dispatchHistory: [
+      createWhatsAppOpenedHistory(orderToUpdate, timestamp, user),
+      ...snapshot.dispatchHistory,
+    ],
+    orders: snapshot.orders.map((order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            changeLog: [...order.changeLog, createWhatsAppOpenedChange(order, timestamp, user)],
+            updatedAt: timestamp,
+            whatsappOpenedAt: timestamp,
+            whatsappOpenedBy: user,
+          }
+        : order,
+    ),
+  });
+}
+
 export async function markOrdersWhatsAppSent(orderIds: string[], user = "Dispatch Staff") {
   const timestamp = new Date().toISOString();
 

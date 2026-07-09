@@ -82,9 +82,11 @@ export function WhatsAppDispatchModal({ onOpenChange, open, order }: WhatsAppDis
   const templates = useDispatchStore((state) => state.templates);
   const dispatchHistory = useDispatchStore((state) => state.dispatchHistory);
   const messageHistory = useDispatchStore((state) => state.messageHistory);
+  const markWhatsAppOpened = useDispatchStore((state) => state.markWhatsAppOpened);
   const markWhatsAppSent = useDispatchStore((state) => state.markWhatsAppSent);
   const recordGeneratedMessage = useDispatchStore((state) => state.recordGeneratedMessage);
   const [templateId, setTemplateId] = useState("");
+  const [openNotice, setOpenNotice] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const recordedKey = useRef("");
   const selectedTemplate =
@@ -114,6 +116,8 @@ export function WhatsAppDispatchModal({ onOpenChange, open, order }: WhatsAppDis
       return;
     }
 
+    setOpenNotice("");
+    setShowConfirmation(false);
     setTemplateId((current) => current || selectedTemplate.id);
   }, [open, order, selectedTemplate]);
 
@@ -136,13 +140,29 @@ export function WhatsAppDispatchModal({ onOpenChange, open, order }: WhatsAppDis
     return <Dialog open={open} onOpenChange={onOpenChange} />;
   }
 
-  function handleOpenWhatsApp() {
+  async function handleOpenWhatsApp() {
     if (!order || !generated) {
       return;
     }
 
-    openWhatsApp(order, generated.body);
-    setShowConfirmation(true);
+    const result = openWhatsApp(order, generated.body);
+
+    if (result.locked) {
+      setOpenNotice("Please wait a moment before opening the next WhatsApp chat.");
+      return;
+    }
+
+    if (result.blockedByPopup) {
+      setOpenNotice("The browser blocked WhatsApp. Allow popups for this app and try again.");
+      return;
+    }
+
+    await markWhatsAppOpened(order.id, "Dispatch Staff");
+    setOpenNotice(
+      result.reused
+        ? "WhatsApp tab reused. Send manually in WhatsApp, then mark sent here when done."
+        : "WhatsApp opened. Send manually in WhatsApp, then mark sent here when done.",
+    );
   }
 
   async function confirmSent() {
@@ -250,7 +270,7 @@ export function WhatsAppDispatchModal({ onOpenChange, open, order }: WhatsAppDis
 
           <div className="space-y-3 overflow-auto border-l border-border p-5">
             <p className="text-sm font-semibold">Quick Actions</p>
-            <Button className="w-full justify-start" onClick={handleOpenWhatsApp}>
+            <Button className="w-full justify-start" onClick={() => void handleOpenWhatsApp()}>
               <ExternalLink />
               Open WhatsApp
             </Button>
@@ -282,6 +302,12 @@ export function WhatsAppDispatchModal({ onOpenChange, open, order }: WhatsAppDis
               <Phone />
               Call Customer
             </Button>
+
+            {openNotice ? (
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-900 dark:text-emerald-100">
+                {openNotice}
+              </div>
+            ) : null}
 
             {showConfirmation ? (
               <div className="rounded-xl border border-primary/25 bg-primary/10 p-4">

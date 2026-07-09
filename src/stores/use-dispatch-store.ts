@@ -14,6 +14,7 @@ import type {
 } from "@/features/dispatch/types";
 import {
   getStorageSnapshot,
+  markOrderWhatsAppOpened,
   markOrdersWhatsAppSent,
   saveCommunicationMessage,
   saveSettings,
@@ -34,6 +35,7 @@ interface DispatchState {
   templates: MessageTemplate[];
   hydrate: () => Promise<void>;
   importFile: (file: File) => Promise<void>;
+  markWhatsAppOpened: (orderId: string, user?: string) => Promise<void>;
   markWhatsAppSent: (orderIds: string[], user?: string) => Promise<void>;
   recordGeneratedMessage: (message: CommunicationMessage) => Promise<void>;
   saveTemplate: (template: MessageTemplate) => Promise<void>;
@@ -57,7 +59,15 @@ function mergeTemplates(templates: MessageTemplate[]) {
   }));
   const byId = new Map(defaultMessageTemplates.map((template) => [template.id, template]));
 
-  normalized.forEach((template) => byId.set(template.id, template));
+  normalized.forEach((template) => {
+    const isOldDefaultDispatch =
+      template.id === "default-dispatch" &&
+      (template.body.includes("Variant:") ||
+        template.body.includes("DELIVERY ADDRESS") ||
+        template.body.includes("ð"));
+
+    byId.set(template.id, isOldDefaultDispatch ? defaultMessageTemplates[0] : template);
+  });
 
   return Array.from(byId.values());
 }
@@ -110,6 +120,10 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
   },
   markWhatsAppSent: async (orderIds, user = "Dispatch Staff") => {
     await markOrdersWhatsAppSent(orderIds, user);
+    await get().hydrate();
+  },
+  markWhatsAppOpened: async (orderId, user = "Dispatch Staff") => {
+    await markOrderWhatsAppOpened(orderId, user);
     await get().hydrate();
   },
   recordGeneratedMessage: async (message) => {
